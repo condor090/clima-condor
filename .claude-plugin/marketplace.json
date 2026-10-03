@@ -1,0 +1,16 @@
+{
+  "name": "condor",
+  "owner": {
+    "name": "Daniel Cheuqueman"
+  },
+  "metadata": {
+    "description": "Mods de Claude Code de Daniel Cheuqueman"
+  },
+  "plugins": [
+    {
+      "name": "clima-condor",
+      "source": "./",
+      "description": "Clima, sol y luna reales, marea, huracanes y relojes en un panel de Claude Code: /clima"
+    }
+  ]
+}

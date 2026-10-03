@@ -1,0 +1,35 @@
+{
+  "name": "clima-condor",
+  "version": "0.1.0",
+  "description": "Clima, sol y luna reales, marea, huracanes y relojes en un panel de Claude Code: /clima",
+  "author": {
+    "name": "Daniel Cheuqueman"
+  },
+  "types": "./types/index.d.ts",
+  "homepage": "https://github.com/condor090/clima-condor",
+  "repository": "https://github.com/condor090/clima-condor",
+  "license": "MIT",
+  "keywords": [
+    "clima",
+    "weather",
+    "luna",
+    "sol",
+    "marea",
+    "huracanes",
+    "reloj"
+  ],
+  "userConfig": {
+    "segunda_ciudad": {
+      "type": "string",
+      "title": "Segunda ciudad",
+      "description": "Nombre de la otra ciudad del reloj «Dos ciudades»",
+      "default": "Santiago"
+    },
+    "segunda_zona": {
+      "type": "string",
+      "title": "Zona horaria de la segunda ciudad",
+      "description": "Zona IANA, por ejemplo America/Santiago, Europe/Madrid o America/Mexico_City",
+      "default": "America/Santiago"
+    }
+  }
+}
