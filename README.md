@@ -2,6 +2,30 @@
 
 Un mod para [Claude Code](https://claude.com/claude-code) que abre un panel con el cielo de tu ciudad: clima real, sol y luna en su posición real, marea, huracanes y relojes. Funciona en la terminal y en la pestaña Code de la app de escritorio.
 
+<table>
+  <tr>
+    <td><img src="docs/amanecer.svg" width="400" alt="Amanecer en los Andes: el sol asoma detrás de la sierra y la luna menguante se apaga"></td>
+    <td><img src="docs/dia.svg" width="400" alt="Mañana despejada en el desierto, con el sol y sus rayos y la luna de día"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/noche.svg" width="400" alt="Noche de luna gibosa con estrellas que titilan"></td>
+    <td><img src="docs/tormenta.svg" width="400" alt="Tarde de tormenta con lluvia y rayos"></td>
+  </tr>
+</table>
+
+<p>
+  <img src="docs/reloj-1.svg" width="88" alt="Reloj Fósforo">
+  <img src="docs/reloj-2.svg" width="88" alt="Reloj Despertador">
+  <img src="docs/reloj-3.svg" width="88" alt="Reloj Centro Evolución">
+  <img src="docs/reloj-4.svg" width="88" alt="Reloj Hielo">
+  <img src="docs/reloj-5.svg" width="88" alt="Reloj Sol y luna">
+  <img src="docs/reloj-6.svg" width="88" alt="Reloj Neón">
+  <img src="docs/reloj-7.svg" width="88" alt="Reloj Binario">
+  <img src="docs/reloj-8.svg" width="88" alt="Reloj Dos ciudades">
+</p>
+
+Las imágenes salen del mismo código que dibuja el panel (`docs/generar.ts`) y se mueven igual que en la app de escritorio: nubes, lluvia, estrellas, rayos y manecillas.
+
 ## Qué muestra
 
 - **Cielo vivo**: amanecer, día, atardecer y noche según la hora real; nubes, lluvia, nieve y tormentas según el clima real.
