@@ -1,27 +1,31 @@
 // Funciones puras del clima: URLs, parseo de Open-Meteo y formato
 import type { Clima, Dia, Hora, Lugar, Tarjeta } from '../types'
+import { idioma, tr } from './idioma'
 
 export const SANTIAGO: Lugar = { nombre: 'Santiago, Chile', lat: -33.4489, lon: -70.6693 }
 
 type Cielo = { dia: string; noche: string; texto: string; color: string }
+type CieloBase = Omit<Cielo, 'texto'> & { es: string; en: string }
 
 // Códigos WMO que entrega Open-Meteo
-const CIELOS: Array<[number[], Cielo]> = [
-  [[0], { dia: '☀️', noche: '🌙', texto: 'Despejado', color: '#fbbf24' }],
-  [[1], { dia: '🌤️', noche: '🌙', texto: 'Mayormente despejado', color: '#fcd34d' }],
-  [[2], { dia: '⛅', noche: '☁️', texto: 'Parcialmente nublado', color: '#cbd5e1' }],
-  [[3], { dia: '☁️', noche: '☁️', texto: 'Nublado', color: '#94a3b8' }],
-  [[45, 48], { dia: '🌫️', noche: '🌫️', texto: 'Niebla', color: '#a8a29e' }],
-  [[51, 53, 55, 56, 57], { dia: '🌦️', noche: '🌧️', texto: 'Llovizna', color: '#7dd3fc' }],
-  [[61, 63, 66, 80, 81], { dia: '🌧️', noche: '🌧️', texto: 'Lluvia', color: '#38bdf8' }],
-  [[65, 67, 82], { dia: '🌧️', noche: '🌧️', texto: 'Lluvia intensa', color: '#3b82f6' }],
-  [[71, 73, 75, 77, 85, 86], { dia: '🌨️', noche: '🌨️', texto: 'Nieve', color: '#e0f2fe' }],
-  [[95, 96, 99], { dia: '⛈️', noche: '⛈️', texto: 'Tormenta', color: '#c084fc' }],
+const CIELOS: Array<[number[], CieloBase]> = [
+  [[0], { dia: '☀️', noche: '🌙', es: 'Despejado', en: 'Clear', color: '#fbbf24' }],
+  [[1], { dia: '🌤️', noche: '🌙', es: 'Mayormente despejado', en: 'Mostly clear', color: '#fcd34d' }],
+  [[2], { dia: '⛅', noche: '☁️', es: 'Parcialmente nublado', en: 'Partly cloudy', color: '#cbd5e1' }],
+  [[3], { dia: '☁️', noche: '☁️', es: 'Nublado', en: 'Cloudy', color: '#94a3b8' }],
+  [[45, 48], { dia: '🌫️', noche: '🌫️', es: 'Niebla', en: 'Fog', color: '#a8a29e' }],
+  [[51, 53, 55, 56, 57], { dia: '🌦️', noche: '🌧️', es: 'Llovizna', en: 'Drizzle', color: '#7dd3fc' }],
+  [[61, 63, 66, 80, 81], { dia: '🌧️', noche: '🌧️', es: 'Lluvia', en: 'Rain', color: '#38bdf8' }],
+  [[65, 67, 82], { dia: '🌧️', noche: '🌧️', es: 'Lluvia intensa', en: 'Heavy rain', color: '#3b82f6' }],
+  [[71, 73, 75, 77, 85, 86], { dia: '🌨️', noche: '🌨️', es: 'Nieve', en: 'Snow', color: '#e0f2fe' }],
+  [[95, 96, 99], { dia: '⛈️', noche: '⛈️', es: 'Tormenta', en: 'Thunderstorm', color: '#c084fc' }],
 ]
 
 export function cielo(codigo: number): Cielo {
   const hallado = CIELOS.find(([codigos]) => codigos.includes(codigo))
-  return hallado ? hallado[1] : { dia: '🌡️', noche: '🌡️', texto: 'Desconocido', color: '#e5e7eb' }
+  if (!hallado) return { dia: '🌡️', noche: '🌡️', texto: tr('Desconocido', 'Unknown'), color: '#e5e7eb' }
+  const { es, en, ...resto } = hallado[1]
+  return { ...resto, texto: tr(es, en) }
 }
 
 export function icono(codigo: number, esDia = true): string {
@@ -41,16 +45,18 @@ export function colorTemp(t: number): string {
 }
 
 const RUMBOS = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO']
+const RUMBOS_EN = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
 export function rumbo(grados: number): string {
-  return RUMBOS[Math.round((((grados % 360) + 360) % 360) / 45) % 8] ?? 'N'
+  return (idioma() === 'en' ? RUMBOS_EN : RUMBOS)[Math.round((((grados % 360) + 360) % 360) / 45) % 8] ?? 'N'
 }
 
 const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const DIAS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export function nombreDia(fecha: string, indice: number): string {
-  if (indice === 0) return 'Hoy'
-  if (indice === 1) return 'Mañana'
+  if (indice === 0) return tr('Hoy', 'Today')
+  if (indice === 1) return tr('Mañana', 'Tomorrow')
   const [a, m, d] = fecha.split('-').map(Number)
-  return DIAS[new Date(Date.UTC(a ?? 2000, (m ?? 1) - 1, d ?? 1)).getUTCDay()] ?? fecha
+  return (idioma() === 'en' ? DIAS_EN : DIAS)[new Date(Date.UTC(a ?? 2000, (m ?? 1) - 1, d ?? 1)).getUTCDay()] ?? fecha
 }
 
 export function urlPronostico(l: Lugar): string {
@@ -67,7 +73,7 @@ export function urlPronostico(l: Lugar): string {
 }
 
 export function urlGeocodificar(nombre: string): string {
-  const p = new URLSearchParams({ name: nombre, count: '1', language: 'es', format: 'json' })
+  const p = new URLSearchParams({ name: nombre, count: '1', language: idioma(), format: 'json' })
   return `https://geocoding-api.open-meteo.com/v1/search?${p.toString()}`
 }
 
@@ -156,7 +162,7 @@ export function tarjeta(c: Clima): Tarjeta {
   const ciudad = c.lugar.nombre.split(',')[0] ?? c.lugar.nombre
   const hoy = c.dias[0]
   const lluvia = Math.max(0, ...c.horas.slice(0, 6).map(h => h.lluvia))
-  const partes = [hoy ? `hoy ${grados(hoy.min)} / ${grados(hoy.max)}` : '', `lluvia ${Math.round(lluvia)}%`, `UV ${Math.round(c.actual.uv)}`]
+  const partes = [hoy ? `${tr('hoy', 'today')} ${grados(hoy.min)} / ${grados(hoy.max)}` : '', `${tr('lluvia', 'rain')} ${Math.round(lluvia)}%`, `UV ${Math.round(c.actual.uv)}`]
   return {
     titulo: `${icono(c.actual.codigo, c.actual.esDia)} ${grados(c.actual.temp)} ${ciudad} · ${cielo(c.actual.codigo).texto.toLowerCase()}`,
     detalle: partes.filter(Boolean).join(' · '),

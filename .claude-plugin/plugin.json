@@ -1,6 +1,6 @@
 {
   "name": "clima-condor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Clima, sol y luna reales, marea, huracanes y relojes en un panel de Claude Code: /clima",
   "author": {
     "name": "Daniel Cheuqueman"
@@ -19,6 +19,16 @@
     "reloj"
   ],
   "userConfig": {
+    "idioma": {
+      "type": "string",
+      "title": "Idioma / Language",
+      "description": "es (español) o en (English). También se cambia con /clima idioma en o el botón 🌐 del panel",
+      "default": "es",
+      "options": [
+        "es",
+        "en"
+      ]
+    },
     "segunda_ciudad": {
       "type": "string",
       "title": "Segunda ciudad",

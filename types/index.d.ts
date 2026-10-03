@@ -78,6 +78,6 @@ export type Sim = { nombre: string; real: number; desde: number; hasta: number; 
 
 declare module 'claude-code' {
   interface PluginState {
-    'clima-condor': { clima: Clima | null; error: string | null; cargando: boolean; caratula: number; minuto: number; tarjeta: Tarjeta | null; limites: Limite[]; codex: Agente | null; grok: Agente | null; antigravity: Agente | null; modo: ModoReloj; marea: Marea | null; huracanes: Huracanes | null; sim: Sim | null }
+    'clima-condor': { clima: Clima | null; error: string | null; cargando: boolean; caratula: number; minuto: number; tarjeta: Tarjeta | null; limites: Limite[]; codex: Agente | null; grok: Agente | null; antigravity: Agente | null; modo: ModoReloj; marea: Marea | null; huracanes: Huracanes | null; sim: Sim | null; idioma: 'es' | 'en' }
   }
 }

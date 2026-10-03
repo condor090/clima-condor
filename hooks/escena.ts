@@ -736,7 +736,8 @@ function trazosRayos(rayos: NonNullable<Capas['rayos']>, par: number): string {
 // Un cuadro del timelapse en el escritorio: cielo de píxeles con sol y luna lisos
 export function svgCuadro(c: Capas, n: number, lado: number): string {
   const l = componer({ ...c, fondo: c.limpio, rayos: null }, n)
-  const astros = resplandores(c.astros) + discos(c.astros) + (c.rayos ? `<g ${LISO}>${trazosRayos(c.rayos, 0)}${trazosRayos(c.rayos, 1)}</g>` : '')
+  const rayos = c.rayos
+  const astros = resplandores(c.astros) + discos(c.astros) + (rayos ? `<g ${LISO}>${trazosRayos(rayos, 0)}${trazosRayos(rayos, 1)}</g>` : '')
   // El paisaje va encima de nuevo para que el sol y la luna salgan detrás de la sierra
   const ventanas = c.ventanas.filter(v => ventanaEncendida(v.x, v.y, Math.floor(n / 40)))
   const encima = rects(c.paisaje) + ventanas.map(v => `<rect x="${v.x}" y="${v.y}" width="1" height="1" fill="${css(COLOR_VENTANA)}"/>`).join('')
@@ -768,13 +769,14 @@ export function svgEscena(c: Capas, lado: number, ms: number): string {
   s += discos(c.astros)
 
   // Rayos del sol: trazos finos que giran despacio; pares e impares se turnan con un fundido
-  if (c.rayos) {
-    const { x, y } = c.rayos
+  const rayos = c.rayos
+  if (rayos) {
+    const { x, y } = rayos
     const cx = x + 0.5
     const cy = y + 0.5
     const durGiro = (2 * Math.PI) / 0.04 / FPS
     const alterna = (par: number) =>
-      `<g opacity="${par ? 0.3 : 1}"><animate attributeName="opacity" values="1;0.3;1" ${ciclo(2, seg + (par ? 1 : 0))}/>${trazosRayos(c.rayos, par)}</g>`
+      `<g opacity="${par ? 0.3 : 1}"><animate attributeName="opacity" values="1;0.3;1" ${ciclo(2, seg + (par ? 1 : 0))}/>${trazosRayos(rayos, par)}</g>`
     s += `<g shape-rendering="geometricPrecision"><animateTransform attributeName="transform" type="rotate" from="0 ${r2(cx)} ${r2(cy)}" to="360 ${r2(cx)} ${r2(cy)}" ${ciclo(durGiro, seg)}/>${alterna(0)}${alterna(1)}</g>`
   }
 

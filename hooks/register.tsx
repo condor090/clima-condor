@@ -22,7 +22,7 @@ import {
 import { agrupar, colorUso, hex, medidoEl, medidor, reinicioCorto, ritmoCorto, ventanas } from './consumo'
 import { capas, componer, empaquetar, svgCuadro, svgDe, svgEscena } from './escena'
 import type { Capas } from './escena'
-import { DOS_CIUDADES, TEMAS, horaEn, offsetDe } from './reloj'
+import { DOS_CIUDADES, TEMAS, horaEn, nombreEn, offsetDe } from './reloj'
 import type { Contexto } from './reloj'
 import { celdasVector, svgVector } from './vector'
 import type { Dibujo } from './vector'
@@ -32,7 +32,7 @@ import { candidatos, estadoMarea, parsearMarea, urlMarea } from './marea'
 import {
   COLOR_NIVEL,
   RADIO_INTERES_KM,
-  TEXTO_NIVEL,
+  textoNivel,
   URL_NHC,
   cercania,
   claseTexto,
@@ -43,9 +43,11 @@ import {
   seAcerca,
 } from './huracanes'
 import { dibujoEspiral, dibujoMarea, dibujoRadar, escalaRadar } from './graficos'
+import { NOMBRE_IDIOMA, esIdioma, fijarIdioma, idioma, idiomaDe, miles, tr } from './idioma'
+import type { Idioma } from './idioma'
 
 const PANEL = 'clima'
-const TITULO = 'Clima'
+const titulo = (): string => tr('Clima', 'Weather')
 const CADA_MS = 15 * 60 * 1000
 const ACENTO = '#7dd3fc'
 
@@ -70,6 +72,8 @@ const mareaA = atom({ plugin: 'clima-condor', key: 'marea' } as const, null)
 const huracanesA = atom({ plugin: 'clima-condor', key: 'huracanes' } as const, null)
 // Timelapse del amanecer, el atardecer o la salida de la luna
 const simA = atom({ plugin: 'clima-condor', key: 'sim' } as const, null)
+// Idioma del panel: se guarda para las próximas sesiones; el panel se redibuja al cambiarlo
+const idiomaA = atom({ plugin: 'clima-condor', key: 'idioma' } as const, 'es')
 const MAREA_MS = 3 * 60 * 60 * 1000
 const HURACANES_MS = 30 * 60 * 1000
 
@@ -98,14 +102,17 @@ const copiar = (ls: readonly Limite[]): Limite[] => ls.map(l => ({ kind: l.kind,
 
 const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const DIAS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MESES_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 function cuando(ms: number, ahora: number, offsetMin: number): string {
   const d = new Date(ms + offsetMin * 60_000)
   const dia = (x: number) => Math.floor((x + offsetMin * 60_000) / 86_400_000)
   const hh = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
   const dif = dia(ms) - dia(ahora)
-  if (dif === 0) return `hoy ${hh}`
-  if (dif === 1) return `mañana ${hh}`
+  if (dif === 0) return `${tr('hoy', 'today')} ${hh}`
+  if (dif === 1) return `${tr('mañana', 'tomorrow')} ${hh}`
+  if (idioma() === 'en') return `${DIAS_EN[d.getUTCDay()]} ${MESES_EN[d.getUTCMonth()]} ${d.getUTCDate()} ${hh}`
   return `${DIAS[d.getUTCDay()]} ${d.getUTCDate()} ${MESES[d.getUTCMonth()]} ${hh}`
 }
 
@@ -225,9 +232,9 @@ function pulsoEscritorio($: EngineInterface): void {
 
 type Evento = 'amanecer' | 'atardecer' | 'luna'
 const EVENTOS: Record<Evento, { nombre: string; cuerpo: 'sol' | 'luna'; sube: boolean; antes: number; despues: number }> = {
-  amanecer: { nombre: 'Amanecer', cuerpo: 'sol', sube: true, antes: 75, despues: 45 },
-  atardecer: { nombre: 'Atardecer', cuerpo: 'sol', sube: false, antes: 45, despues: 75 },
-  luna: { nombre: 'Salida de la luna', cuerpo: 'luna', sube: true, antes: 30, despues: 90 },
+  amanecer: { get nombre() { return tr('Amanecer', 'Sunrise') }, cuerpo: 'sol', sube: true, antes: 75, despues: 45 },
+  atardecer: { get nombre() { return tr('Atardecer', 'Sunset') }, cuerpo: 'sol', sube: false, antes: 45, despues: 75 },
+  luna: { get nombre() { return tr('Salida de la luna', 'Moonrise') }, cuerpo: 'luna', sube: true, antes: 30, despues: 90 },
 }
 const DURACION_SIM_S = 40
 
@@ -235,12 +242,12 @@ let pulsoSim: Timer | null = null
 
 async function iniciarSim($: EngineInterface, ev: Evento): Promise<string> {
   const c = await read($, clima)
-  if (!c) return 'Todavía no tengo el clima.'
+  if (!c) return tr('Todavía no tengo el clima.', 'No weather data yet.')
   const ahora = await $.clock.now()
   const e = EVENTOS[ev]
   // El próximo, buscando desde un poco antes para incluir uno que está ocurriendo
   const t = cruce(e.cuerpo, ahora - e.despues * 60_000, c.lugar.lat, c.lugar.lon, e.sube)
-  if (t === null) return `No encontré el próximo ${e.nombre.toLowerCase()} en 36 horas.`
+  if (t === null) return tr(`No encontré el próximo ${e.nombre.toLowerCase()} en 36 horas.`, `No ${e.nombre.toLowerCase()} in the next 36 hours.`)
   const desde = t - e.antes * 60_000
   const hasta = t + e.despues * 60_000
   const sim: Sim = { nombre: e.nombre, real: ahora, desde, hasta, vel: (hasta - desde) / (DURACION_SIM_S * 1000) }
@@ -261,7 +268,7 @@ async function iniciarSim($: EngineInterface, ev: Evento): Promise<string> {
       await revisarSim($, ya, s)
     })()
   })
-  return `${e.nombre} acelerado: ${cuando(t, ahora, c.offsetMin)}, visto en ${DURACION_SIM_S} segundos.`
+  return tr(`${e.nombre} acelerado: ${cuando(t, ahora, c.offsetMin)}, visto en ${DURACION_SIM_S} segundos.`, `${e.nombre} sped up: ${cuando(t, ahora, c.offsetMin)}, shown in ${DURACION_SIM_S} seconds.`)
 }
 
 // Al llegar al final se queda 4 s en el último cuadro y vuelve a la hora real
@@ -300,7 +307,7 @@ async function ubicar($: EngineInterface): Promise<Lugar> {
     if (r.ok) {
       const j = JSON.parse(r.text) as { success?: boolean; city?: string; region?: string; latitude?: number; longitude?: number }
       if (j.success !== false && typeof j.latitude === 'number' && typeof j.longitude === 'number') {
-        return { nombre: [j.city, j.region].filter(Boolean).join(', ') || 'Tu ubicación', lat: j.latitude, lon: j.longitude }
+        return { nombre: [j.city, j.region].filter(Boolean).join(', ') || tr('Tu ubicación', 'Your location'), lat: j.latitude, lon: j.longitude }
       }
     }
   } catch {
@@ -311,7 +318,7 @@ async function ubicar($: EngineInterface): Promise<Lugar> {
     if (r.ok) {
       const j = JSON.parse(r.text) as { city?: string; regionName?: string; lat?: number; lon?: number }
       if (typeof j.lat === 'number' && typeof j.lon === 'number') {
-        return { nombre: [j.city, j.regionName].filter(Boolean).join(', ') || 'Tu ubicación', lat: j.lat, lon: j.lon }
+        return { nombre: [j.city, j.regionName].filter(Boolean).join(', ') || tr('Tu ubicación', 'Your location'), lat: j.lat, lon: j.lon }
       }
     }
   } catch {
@@ -359,7 +366,7 @@ async function leerHuracanes($: EngineInterface, lugar: Lugar, forzar = false): 
   huracanesLeidos = { clave, ms: ahora }
   try {
     const r = await $.http.fetch(URL_NHC)
-    if (!r.ok) throw new Error(`el NHC respondió ${r.status}`)
+    if (!r.ok) throw new Error(tr(`el NHC respondió ${r.status}`, `NHC answered ${r.status}`))
     const ciclones: Ciclon[] = []
     for (const b of parsearNhc(lugar, JSON.parse(r.text))) {
       const { urlAviso, ...resto } = b
@@ -395,17 +402,24 @@ async function avisarCiclon($: EngineInterface, cs: Ciclon[], ahora: number): Pr
   const clave = `${c.id}:${n}:${Math.floor(ahora / 86_400_000)}`
   const vistos = ((await $.store.get('avisosCiclon')) as string[] | undefined) ?? []
   if (vistos.includes(clave)) return
-  $.ui.toast(`🌀 ${TEXTO_NIVEL[n]}: ${claseTexto(c)} ${c.nombre} a ${c.km} km al ${rumbo16(c.rumbo)} · /clima para ver el radar`, { timeoutMs: 12_000 })
+  $.ui.toast(`🌀 ${textoNivel(n)}: ${claseTexto(c)} ${c.nombre} ${tr('a ', '')}${miles(c.km)} km ${tr('al', 'to the')} ${rumbo16(c.rumbo)} · ${tr('/clima para ver el radar', '/clima to see the radar')}`, { timeoutMs: 12_000 })
   await $.store.set('avisosCiclon', [...vistos.slice(-20), clave])
 }
 
 // La tarjeta de la barra suma el ciclón más cercano si está a menos de 1.500 km
+async function cambiarIdioma($: EngineInterface, nuevo: Idioma): Promise<void> {
+  fijarIdioma(nuevo)
+  await $.store.set('idioma', nuevo)
+  await update($, idiomaA, () => nuevo)
+  await actualizarTarjeta($)
+}
+
 async function actualizarTarjeta($: EngineInterface): Promise<void> {
   const c = await read($, clima)
   if (!c) return
   const base = tarjeta(c)
   const cerca = (await read($, huracanesA))?.ciclones[0]
-  const extra = cerca && nivel(cerca) !== 'lejos' ? `🌀 ${cerca.nombre} a ${cerca.km} km` : ''
+  const extra = cerca && nivel(cerca) !== 'lejos' ? `🌀 ${cerca.nombre} ${tr('a ', '')}${miles(cerca.km)} km` : ''
   await update($, tarjetaA, () => ({ ...base, detalle: [extra, base.detalle].filter(Boolean).join(' · ') }))
 }
 
@@ -420,7 +434,7 @@ async function refrescar($: EngineInterface, forzar = false): Promise<Clima | nu
     try {
       const lugar = await ubicar($)
       const r = await $.http.fetch(urlPronostico(lugar))
-      if (!r.ok) throw new Error(`Open-Meteo respondió ${r.status}`)
+      if (!r.ok) throw new Error(tr(`Open-Meteo respondió ${r.status}`, `Open-Meteo answered ${r.status}`))
       const nuevo = parsear(lugar, JSON.parse(r.text))
       await update($, clima, () => nuevo)
       await update($, error, () => null)
@@ -440,14 +454,22 @@ async function refrescar($: EngineInterface, forzar = false): Promise<Clima | nu
 }
 
 export const register: Register = (on, options) => {
+  fijarIdioma(options.idioma)
   const nombre = typeof options.segunda_ciudad === 'string' ? options.segunda_ciudad.trim() : ''
   const zona = typeof options.segunda_zona === 'string' ? options.segunda_zona.trim() : ''
   if (nombre && zona) segunda = { nombre, zona }
 
   on('session.start', async ($, e, next) => {
+    // El idioma elegido en el panel manda sobre el de las opciones del mod
+    const elegido = await $.store.get('idioma')
+    if (esIdioma(elegido)) fijarIdioma(elegido)
+    await update($, idiomaA, () => idioma())
     await $.command.register({
       name: 'clima',
-      description: 'Clima, luna, marea y huracanes: /clima, /clima <ciudad>, /clima amanecer | atardecer | luna, /clima auto, /clima cerrar',
+      description: tr(
+        'Clima, luna, marea y huracanes: /clima, /clima <ciudad>, /clima amanecer | atardecer | luna, /clima auto, /clima idioma en, /clima cerrar',
+        'Weather, moon, tides and hurricanes: /clima, /clima <city>, /clima sunrise | sunset | moon, /clima auto, /clima language es, /clima close',
+      ),
     })
     const guardada = (await $.store.get('caratula')) as number | undefined
     if (typeof guardada === 'number') await update($, caratulaA, () => guardada % TEMAS.length)
@@ -478,14 +500,24 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'clima' }, async ($, e) => {
     const arg = e.args.trim()
 
-    if (arg.toLowerCase() === 'cerrar') {
-      await $.ui.close({ id: PANEL })
-      return { text: 'Panel del clima cerrado. La barra de estado sigue activa.' }
+    // /clima idioma en · /clima language es · /clima idioma (alterna)
+    const pedido = /^(idioma|language|lang)\b\s*(.*)$/i.exec(arg)
+    if (pedido) {
+      const nuevo = pedido[2] ? idiomaDe(pedido[2]) : idioma() === 'es' ? 'en' : 'es'
+      if (!nuevo) return { text: tr('Idiomas disponibles: es (español), en (inglés).', 'Available languages: es (Spanish), en (English).') }
+      await cambiarIdioma($, nuevo)
+      return { text: tr('Listo: el panel del clima está en español.', 'Done: the weather panel is now in English.') }
     }
 
-    const ev = arg.toLowerCase()
-    if (ev === 'amanecer' || ev === 'atardecer' || ev === 'luna') {
-      await $.ui.open({ id: PANEL, title: TITULO })
+    if (['cerrar', 'close'].includes(arg.toLowerCase())) {
+      await $.ui.close({ id: PANEL })
+      return { text: tr('Panel del clima cerrado. La barra de estado sigue activa.', 'Weather panel closed. The status line stays on.') }
+    }
+
+    const ALIAS: Record<string, Evento> = { amanecer: 'amanecer', sunrise: 'amanecer', atardecer: 'atardecer', sunset: 'atardecer', luna: 'luna', moon: 'luna', moonrise: 'luna' }
+    const ev = ALIAS[arg.toLowerCase()]
+    if (ev) {
+      await $.ui.open({ id: PANEL, title: titulo() })
       return { text: await iniciarSim($, ev) }
     }
 
@@ -493,17 +525,17 @@ export const register: Register = (on, options) => {
       await $.store.delete('lugar')
     } else if (arg) {
       const lugar = await geocodificar($, arg)
-      if (!lugar) return { text: `No encontré "${arg}". Prueba con otro nombre.` }
+      if (!lugar) return { text: tr(`No encontré "${arg}". Prueba con otro nombre.`, `Couldn't find "${arg}". Try another name.`) }
       await $.store.set('lugar', lugar)
     }
 
     const c = await refrescar($, Boolean(arg))
-    await $.ui.open({ id: PANEL, title: TITULO })
-    if (!c) return { text: `No pude obtener el clima: ${(await read($, error)) ?? 'error desconocido'}` }
+    await $.ui.open({ id: PANEL, title: titulo() })
+    if (!c) return { text: `${tr('No pude obtener el clima', "Couldn't get the weather")}: ${(await read($, error)) ?? tr('error desconocido', 'unknown error')}` }
 
     const cie = cielo(c.actual.codigo)
     const hoy = c.dias[0]
-    const resumen = hoy ? ` · hoy ${grados(hoy.min)} / ${grados(hoy.max)}` : ''
+    const resumen = hoy ? ` · ${tr('hoy', 'today')} ${grados(hoy.min)} / ${grados(hoy.max)}` : ''
     return { text: `${icono(c.actual.codigo, c.actual.esDia)} ${c.lugar.nombre}: ${grados(c.actual.temp)}, ${cie.texto.toLowerCase()}${resumen}` }
   })
 
@@ -533,9 +565,9 @@ export const register: Register = (on, options) => {
     if (!c) {
       return (
         <Box flexDirection="column" paddingX={1}>
-          <Text color={ACENTO} bold>Clima</Text>
-          {fallo ? <Text color="#f87171">No pude obtener el clima: {fallo}</Text> : <Text dimColor>Mirando el cielo…</Text>}
-          {fallo && <Button key="reintentar" label="Reintentar" hotkey="r" onPress={() => void refrescar($)} />}
+          <Text color={ACENTO} bold>{titulo()}</Text>
+          {fallo ? <Text color="#f87171">{tr('No pude obtener el clima', "Couldn't get the weather")}: {fallo}</Text> : <Text dimColor>{tr('Mirando el cielo…', 'Looking at the sky…')}</Text>}
+          {fallo && <Button key="reintentar" label={tr('Reintentar', 'Retry')} hotkey="r" onPress={() => void refrescar($)} />}
         </Box>
       )
     }
@@ -549,6 +581,8 @@ export const register: Register = (on, options) => {
     const indice = await read($, caratulaA)
     const modo = await read($, modoA)
     await read($, minutoA)
+    // Redibuja al cambiar de idioma
+    await read($, idiomaA)
     const tema = TEMAS[indice] ?? TEMAS[0]!
     const caratula = modo === 'analogico' ? tema.analogico : tema.digital
     const relojes = relojesDe(c, indice, modo, ahora)
@@ -595,7 +629,7 @@ export const register: Register = (on, options) => {
           <Box width={12}>
             <Text>{v.nombre}</Text>
           </Box>
-          {pixeles(`m-${p}-${v.kind}`, medidor(v, MEDIDOR), MEDIDOR, 1, `${v.nombre}: ${Math.round(v.usado)}% usado`, 6)}
+          {pixeles(`m-${p}-${v.kind}`, medidor(v, MEDIDOR), MEDIDOR, 1, `${v.nombre}: ${Math.round(v.usado)}% ${tr('usado', 'used')}`, 6)}
           <Box width={5} justifyContent="flex-end">
             <Text color={hex(colorUso(v.usado))} bold>{queda}%</Text>
           </Box>
@@ -617,23 +651,23 @@ export const register: Register = (on, options) => {
     const seccionMarea =
       marea && em ? (
         <Box key="marea" marginTop={1} gap={2}>
-          {graficos ? vector('marea-g', dibujoMarea(marea, ahora), `Marea: ${em.subiendo ? 'subiendo' : 'bajando'}, ${em.altura.toFixed(2)} m`, 4) : null}
+          {graficos ? vector('marea-g', dibujoMarea(marea, ahora), `${tr('Marea', 'Tide')}: ${em.subiendo ? tr('subiendo', 'rising') : tr('bajando', 'falling')}, ${em.altura.toFixed(2)} m`, 4) : null}
           <Box flexDirection="column" flexShrink={1}>
             <Box gap={1}>
-              <Text color="#38bdf8" bold>🌊 Marea</Text>
+              <Text color="#38bdf8" bold>🌊 {tr('Marea', 'Tide')}</Text>
               <Text dimColor>costa a {marea.km} km al {rumbo16(marea.rumbo)}</Text>
             </Box>
             <Text>
-              <Text color={em.subiendo ? '#38bdf8' : '#94a3b8'} bold>{em.subiendo ? '↑ Subiendo' : '↓ Bajando'}</Text>
+              <Text color={em.subiendo ? '#38bdf8' : '#94a3b8'} bold>{em.subiendo ? tr('↑ Subiendo', '↑ Rising') : tr('↓ Bajando', '↓ Falling')}</Text>
               <Text> {em.altura.toFixed(2)} m</Text>
             </Text>
             {em.proximas.map(x => (
               <Text key={`ex-${x.ms}`}>
                 <Text color={x.tipo === 'alta' ? '#fde047' : '#a78bfa'}>●</Text>
-                <Text dimColor> {x.tipo === 'alta' ? 'Pleamar' : 'Bajamar'} {cuando(x.ms, ahora, c.offsetMin)} · {x.altura.toFixed(2)} m</Text>
+                <Text dimColor> {x.tipo === 'alta' ? tr('Pleamar', 'High tide') : tr('Bajamar', 'Low tide')} {cuando(x.ms, ahora, c.offsetMin)} · {x.altura.toFixed(2)} m</Text>
               </Text>
             ))}
-            <Text dimColor>modelo global, no sirve para navegar</Text>
+            <Text dimColor>{tr('modelo global, no sirve para navegar', 'global model, not for navigation')}</Text>
           </Box>
         </Box>
       ) : null
@@ -641,21 +675,21 @@ export const register: Register = (on, options) => {
     const seccionHuracanes = (
       <Box key="huracanes" flexDirection="column" marginTop={1}>
         <Box gap={1}>
-          {Svg && principal ? vector('espiral', dibujoEspiral(c.lugar.lat < 0, Number.parseInt(COLOR_NIVEL[nivelPrincipal].slice(1), 16)), 'Ciclón activo', 2) : <Text>🌀</Text>}
-          <Text color={principal ? COLOR_NIVEL[nivelPrincipal] : ACENTO} bold>Huracanes</Text>
-          {principal ? <Text color={COLOR_NIVEL[nivelPrincipal]} bold>{TEXTO_NIVEL[nivelPrincipal]}</Text> : null}
-          <Text dimColor>NHC{hur?.consultado ? ` · ${cuando(hur.consultado, ahora, c.offsetMin).replace(/^hoy /, '')}` : ''}{hur?.error ? ' · sin conexión' : ''}</Text>
+          {Svg && principal ? vector('espiral', dibujoEspiral(c.lugar.lat < 0, Number.parseInt(COLOR_NIVEL[nivelPrincipal].slice(1), 16)), tr('Ciclón activo', 'Active cyclone'), 2) : <Text>🌀</Text>}
+          <Text color={principal ? COLOR_NIVEL[nivelPrincipal] : ACENTO} bold>{tr('Huracanes', 'Hurricanes')}</Text>
+          {principal ? <Text color={COLOR_NIVEL[nivelPrincipal]} bold>{textoNivel(nivelPrincipal)}</Text> : null}
+          <Text dimColor>NHC{hur?.consultado ? ` · ${cuando(hur.consultado, ahora, c.offsetMin).replace(/^hoy /, '')}` : ''}{hur?.error ? tr(' · sin conexión', ' · offline') : ''}</Text>
         </Box>
         {!hur ? (
-          <Text dimColor>Consultando el Centro Nacional de Huracanes…</Text>
+          <Text dimColor>{tr('Consultando el Centro Nacional de Huracanes…', 'Checking the National Hurricane Center…')}</Text>
         ) : ciclones.length === 0 ? (
-          <Text dimColor>Sin ciclones activos en el Atlántico ni en el Pacífico.</Text>
+          <Text dimColor>{tr('Sin ciclones activos en el Atlántico ni en el Pacífico.', 'No active cyclones in the Atlantic or the Pacific.')}</Text>
         ) : (
           <Box marginTop={1} gap={2}>
             {graficos ? (
               <Box flexDirection="column" alignItems="center">
-                {vector('radar', dibujoRadar(ciclones, c.lugar, ahora), `Radar de ciclones: ${principal?.nombre ?? ''} a ${principal?.km ?? 0} km`, 4)}
-                <Text dimColor>anillos cada {Math.round(escalaRadar(ciclones) / 3)} km</Text>
+                {vector('radar', dibujoRadar(ciclones, c.lugar, ahora), `${tr('Radar de ciclones', 'Cyclone radar')}: ${principal?.nombre ?? ''} ${tr('a ', '')}${miles(principal?.km ?? 0)} km`, 4)}
+                <Text dimColor>{tr('anillos cada', 'rings every')} {miles(Math.round(escalaRadar(ciclones) / 3))} km</Text>
               </Box>
             ) : null}
             <Box flexDirection="column" flexShrink={1}>
@@ -669,18 +703,18 @@ export const register: Register = (on, options) => {
                       <Text> · {claseTexto(cc)} · {cc.vientoKmh} km/h</Text>
                     </Text>
                     <Text dimColor>
-                      A {cc.km.toLocaleString('es-MX')} km al {rumbo16(cc.rumbo)}
-                      {cc.mueveHacia !== null ? ` · va al ${rumbo16(cc.mueveHacia)}${cc.mueveKmh ? ` a ${cc.mueveKmh} km/h` : ''}` : ''}
-                      {cc.mueveHacia !== null ? (seAcerca(cc) ? ' · se acerca' : ' · se aleja') : ''}
+                      {tr('A ', '')}{miles(cc.km)} km {tr('al', 'to the')} {rumbo16(cc.rumbo)}
+                      {cc.mueveHacia !== null ? ` · ${tr('va al', 'heading')} ${rumbo16(cc.mueveHacia)}${cc.mueveKmh ? ` ${tr('a', 'at')} ${cc.mueveKmh} km/h` : ''}` : ''}
+                      {cc.mueveHacia !== null ? (seAcerca(cc) ? tr(' · se acerca', ' · approaching') : tr(' · se aleja', ' · moving away')) : ''}
                     </Text>
                     {masCerca && cc.cercania ? (
-                      <Text color={COLOR_NIVEL[n]}>Lo más cerca: {cc.cercania.km.toLocaleString('es-MX')} km, {cuando(cc.cercania.ms, ahora, c.offsetMin)}</Text>
+                      <Text color={COLOR_NIVEL[n]}>{tr('Lo más cerca', 'Closest')}: {miles(cc.cercania.km)} km, {cuando(cc.cercania.ms, ahora, c.offsetMin)}</Text>
                     ) : null}
-                    <Link key={`l-${cc.id}`} href={cc.url} label="Pronóstico del NHC" />
+                    <Link key={`l-${cc.id}`} href={cc.url} label={tr('Pronóstico del NHC', 'NHC forecast')} />
                   </Box>
                 )
               })}
-              {ciclones.length > 3 ? <Text dimColor>y {ciclones.length - 3} más lejos</Text> : null}
+              {ciclones.length > 3 ? <Text dimColor>{tr(`y ${ciclones.length - 3} más lejos`, `and ${ciclones.length - 3} farther away`)}</Text> : null}
             </Box>
           </Box>
         )}
@@ -697,12 +731,12 @@ export const register: Register = (on, options) => {
                 <Raster key="cielo" columns={CIELO.columnas} rows={CIELO.filas} cells={empaquetar(componer(cielito, cuadro))} />
               ) : Svg && sim ? (
                 // Durante el timelapse: imagen fija que cambia 4 veces por segundo (sin recargar un marco)
-                <Svg key="cielo-sim" source={svgCuadro(cielito, Math.floor(ahora / 125), 8)} alt={`${sim.nombre} acelerado`} width={CIELO.columnas * 8} height={CIELO.filas * 16} />
+                <Svg key="cielo-sim" source={svgCuadro(cielito, Math.floor(ahora / 125), 8)} alt={`${sim.nombre} ${tr('acelerado', 'sped up')}`} width={CIELO.columnas * 8} height={CIELO.filas * 16} />
               ) : Svg ? (
                 <Svg
                   key="cielo"
                   source={svgEscena(cielito, 8, ahora)}
-                  alt={`Cielo de ${c.lugar.nombre}: ${cie.texto}, ${luna.nombre.toLowerCase()}`}
+                  alt={`${tr('Cielo de', 'Sky over')} ${c.lugar.nombre}: ${cie.texto}, ${luna.nombre.toLowerCase()}`}
                   width={CIELO.columnas * 8}
                   height={CIELO.filas * 16}
                   isInteractive
@@ -715,15 +749,15 @@ export const register: Register = (on, options) => {
               <Box gap={1}>
                 <Text color="#fbbf24" bold>⏩ {sim.nombre}</Text>
                 <Text>{cuando(tEscena, ahora, c.offsetMin)}</Text>
-                <Text dimColor>×{Math.round(sim.vel)} · sol {cielito.altSol.toFixed(1)}° · luna {cielito.altLuna.toFixed(1)}°</Text>
-                <Button key="sim-fin" label="■ Detener" plain onPress={() => void detenerSim($)} />
+                <Text dimColor>×{Math.round(sim.vel)} · {tr('sol', 'sun')} {cielito.altSol.toFixed(1)}° · {tr('luna', 'moon')} {cielito.altLuna.toFixed(1)}°</Text>
+                <Button key="sim-fin" label={tr('■ Detener', '■ Stop')} plain onPress={() => void detenerSim($)} />
               </Box>
             ) : (
               <Box gap={1}>
-                <Text dimColor>Ver en 40 s:</Text>
-                <Button key="sim-amanecer" label="▶ Amanecer" plain onPress={() => void iniciarSim($, 'amanecer')} />
-                <Button key="sim-atardecer" label="▶ Atardecer" plain onPress={() => void iniciarSim($, 'atardecer')} />
-                <Button key="sim-luna" label="▶ Salida de luna" plain onPress={() => void iniciarSim($, 'luna')} />
+                <Text dimColor>{tr('Ver en 40 s:', 'Watch in 40 s:')}</Text>
+                <Button key="sim-amanecer" label={tr('▶ Amanecer', '▶ Sunrise')} plain onPress={() => void iniciarSim($, 'amanecer')} />
+                <Button key="sim-atardecer" label={tr('▶ Atardecer', '▶ Sunset')} plain onPress={() => void iniciarSim($, 'atardecer')} />
+                <Button key="sim-luna" label={tr('▶ Salida de luna', '▶ Moonrise')} plain onPress={() => void iniciarSim($, 'luna')} />
               </Box>
             )
           ) : null}
@@ -733,10 +767,10 @@ export const register: Register = (on, options) => {
             <Text color={cie.color}>{cie.texto}</Text>
           </Box>
           <Text dimColor>
-            Sensación {grados(a.sensacion)} · Humedad {Math.round(a.humedad)}%
+            {tr('Sensación', 'Feels like')} {grados(a.sensacion)} · {tr('Humedad', 'Humidity')} {Math.round(a.humedad)}%
           </Text>
           <Text dimColor>
-            Viento {Math.round(a.viento)} km/h {rumbo(a.dirViento)} · Ráfagas {Math.round(a.rafagas)} · UV {Math.round(a.uv)}
+            {tr('Viento', 'Wind')} {Math.round(a.viento)} km/h {rumbo(a.dirViento)} · {tr('Ráfagas', 'Gusts')} {Math.round(a.rafagas)} · UV {Math.round(a.uv)}
           </Text>
           {hoy && (
             <Text dimColor>
@@ -746,19 +780,19 @@ export const register: Register = (on, options) => {
           <Text>
             <Text>{luna.emoji} </Text>
             <Text color="#e5e7eb">{luna.nombre}</Text>
-            <Text dimColor> · {Math.round(luna.iluminada * 100)}% iluminada · {luna.creciente ? 'llena' : 'nueva'} {cuando(siguiente, ahora, c.offsetMin)}</Text>
+            <Text dimColor> · {Math.round(luna.iluminada * 100)}% {tr('iluminada', 'lit')} · {luna.creciente ? tr('llena', 'full') : tr('nueva', 'new')} {cuando(siguiente, ahora, c.offsetMin)}</Text>
           </Text>
           <Text dimColor>
-            {cielito.altLuna > 0 ? `Luna a ${Math.round(cielito.altLuna)}° sobre el horizonte` : 'Luna bajo el horizonte'}
-            {lunaSale ? ` · sale ${cuando(lunaSale, ahora, c.offsetMin)}` : ''}
-            {lunaPone ? ` · se pone ${cuando(lunaPone, ahora, c.offsetMin)}` : ''}
+            {cielito.altLuna > 0 ? tr(`Luna a ${Math.round(cielito.altLuna)}° sobre el horizonte`, `Moon ${Math.round(cielito.altLuna)}° above the horizon`) : tr('Luna bajo el horizonte', 'Moon below the horizon')}
+            {lunaSale ? ` · ${tr('sale', 'rises')} ${cuando(lunaSale, ahora, c.offsetMin)}` : ''}
+            {lunaPone ? ` · ${tr('se pone', 'sets')} ${cuando(lunaPone, ahora, c.offsetMin)}` : ''}
           </Text>
           {seccionMarea}
         </Box>
 
         {urgente ? seccionHuracanes : null}
 
-        <Text color={ACENTO} bold>Próximas horas</Text>
+        <Text color={ACENTO} bold>{tr('Próximas horas', 'Next hours')}</Text>
         <Box flexDirection="row" flexWrap="wrap">
           {c.horas.map(hr => (
             <Box key={`h-${hr.hora}`} flexDirection="column" width={6} alignItems="center">
@@ -771,7 +805,7 @@ export const register: Register = (on, options) => {
         </Box>
 
         <Box marginTop={1}>
-          <Text color={ACENTO} bold>Próximos 7 días</Text>
+          <Text color={ACENTO} bold>{tr('Próximos 7 días', 'Next 7 days')}</Text>
         </Box>
         {c.dias.map((d, i) => {
           const [antes, rango, despues] = barra(d.min, d.max, bajo, alto)
@@ -802,41 +836,41 @@ export const register: Register = (on, options) => {
         {graficos ? (
           <Box flexDirection="column" marginTop={1}>
             <Box gap={1}>
-              <Text color={ACENTO} bold>Reloj</Text>
-              <Button key="modo-a" label="Analógico" variant={modo === 'analogico' ? 'primary' : 'secondary'} onPress={() => void cambiarModo($, 'analogico')} />
+              <Text color={ACENTO} bold>{tr('Reloj', 'Clock')}</Text>
+              <Button key="modo-a" label={tr('Analógico', 'Analog')} variant={modo === 'analogico' ? 'primary' : 'secondary'} onPress={() => void cambiarModo($, 'analogico')} />
               <Button key="modo-d" label="Digital" variant={modo === 'digital' ? 'primary' : 'secondary'} onPress={() => void cambiarModo($, 'digital')} />
             </Box>
             <Box gap={1}>
               <Button key="car-ant" label="◀" plain onPress={() => void cambiarCaratula($, -1)} />
-              <Text bold>{tema.nombre}</Text>
-              <Text dimColor>· {caratula.nombre}</Text>
+              <Text bold>{nombreEn(tema.nombre)}</Text>
+              <Text dimColor>· {nombreEn(caratula.nombre)}</Text>
               <Button key="car-sig" label="▶" plain onPress={() => void cambiarCaratula($, 1)} />
               <Text dimColor>{indice + 1}/{TEMAS.length}</Text>
             </Box>
             <Box marginTop={1} gap={2}>
               {relojes.map(rel => (
                 <Box key={`b-${rel.key}`} flexDirection="column" alignItems="center">
-                  {vector(rel.key, rel.dibujo, `Reloj de ${rel.nombre}: ${rel.texto}`, rel.lado)}
+                  {vector(rel.key, rel.dibujo, `${tr('Reloj de', 'Clock for')} ${rel.nombre}: ${rel.texto}`, rel.lado)}
                   <Text dimColor>{rel.nombre}</Text>
                 </Box>
               ))}
             </Box>
             <Box marginTop={1} gap={2}>
-              <Text color={ACENTO} bold>Combustible</Text>
-              <Text dimColor>% que queda · barra de arriba lo gastado, la de abajo el tiempo</Text>
+              <Text color={ACENTO} bold>{tr('Combustible', 'Fuel')}</Text>
+              <Text dimColor>{tr('% que queda · barra de arriba lo gastado, la de abajo el tiempo', '% left · top bar what you used, bottom bar the time')}</Text>
             </Box>
-            {encabezado('h-claude', 'Claude', '#d97757', [consumo.length === 0 ? 'aparece tras la primera respuesta (solo con suscripción)' : 'en vivo'])}
+            {encabezado('h-claude', 'Claude', '#d97757', [consumo.length === 0 ? tr('aparece tras la primera respuesta (solo con suscripción)', 'shows after the first reply (subscription only)') : tr('en vivo', 'live')])}
             {consumo.map(v => fila('c', v))}
             {agentes.map(ag =>
               ag.datos ? (
                 <Box key={`ag-${ag.id}`} flexDirection="column">
                   {encabezado(`h-${ag.id}`, ag.nombre, ag.color, [
                     ag.datos.plan ? `plan ${ag.datos.plan}` : '',
-                    ag.datos.creditos ? `créditos ${ag.datos.creditos}` : '',
-                    ag.datos.medido ? `medido ${medidoEl(Date.parse(ag.datos.medido), ahora, c.offsetMin)}` : '',
+                    ag.datos.creditos ? `${tr('créditos', 'credits')} ${ag.datos.creditos}` : '',
+                    ag.datos.medido ? `${tr('medido', 'measured')} ${medidoEl(Date.parse(ag.datos.medido), ahora, c.offsetMin)}` : '',
                     ag.datos.nota ?? '',
                   ])}
-                  {agrupar(ventanas(ag.datos.limites, ahora), 'Todos').map(v => fila(ag.id, v))}
+                  {agrupar(ventanas(ag.datos.limites, ahora), tr('Todos', 'All')).map(v => fila(ag.id, v))}
                 </Box>
               ) : null,
             )}
@@ -845,13 +879,20 @@ export const register: Register = (on, options) => {
 
         <Box marginTop={1} gap={1}>
           <Text dimColor>
-            {ocupado ? 'Actualizando…' : `Actualizado ${c.actualizado}`}
-            {fallo ? ' · sin conexión' : ''}
+            {ocupado ? tr('Actualizando…', 'Updating…') : `${tr('Actualizado', 'Updated')} ${c.actualizado}`}
+            {fallo ? tr(' · sin conexión', ' · offline') : ''}
           </Text>
-          <Button key="actualizar" label="Actualizar" hotkey="r" dimColor onPress={() => void refrescar($, true)} />
-          <Button key="cerrar" label="Cerrar" hotkey="x" dimColor onPress={() => void $.ui.close({ id: PANEL })} />
+          <Button key="actualizar" label={tr('Actualizar', 'Refresh')} hotkey="r" dimColor onPress={() => void refrescar($, true)} />
+          <Button key="cerrar" label={tr('Cerrar', 'Close')} hotkey="x" dimColor onPress={() => void $.ui.close({ id: PANEL })} />
+          <Button
+            key="idioma"
+            label={`🌐 ${NOMBRE_IDIOMA[idioma() === 'es' ? 'en' : 'es']}`}
+            hotkey="l"
+            dimColor
+            onPress={() => void cambiarIdioma($, idioma() === 'es' ? 'en' : 'es')}
+          />
         </Box>
-        <Text dimColor>Open-Meteo · NHC · /clima &lt;ciudad&gt; para cambiar</Text>
+        <Text dimColor>Open-Meteo · NHC · {tr('/clima <ciudad> para cambiar', '/clima <city> to change')}</Text>
       </Box>
     )
   })

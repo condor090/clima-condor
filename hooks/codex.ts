@@ -1,5 +1,6 @@
 // Límites de uso de Codex: se leen del último evento token_count de sus sesiones en ~/.codex
 import type { Agente, Limite } from '../types'
+import { tr } from './idioma'
 
 // Último registro con rate_limits del archivo de sesión más reciente (los de la última semana)
 export const LEER_CODEX =
@@ -33,7 +34,7 @@ export function parsearCodex(linea: string): Agente | null {
   return {
     limites,
     plan: rl.plan_type ?? null,
-    creditos: rl.credits?.unlimited ? 'ilimitados' : Number.isFinite(saldo) ? miles(Math.floor(saldo)) : null,
+    creditos: rl.credits?.unlimited ? tr('ilimitados', 'unlimited') : Number.isFinite(saldo) ? miles(Math.floor(saldo)) : null,
     medido: j.timestamp ?? null,
     nota: null,
   }

@@ -2,6 +2,7 @@
 // Posición actual de CurrentStorms.json y la trayectoria pronosticada del aviso de pronóstico (texto)
 import type { Ciclon, Lugar, Punto } from '../types'
 import { distanciaKm, rumboGrados } from './marea'
+import { idioma, tr } from './idioma'
 
 export const URL_NHC = 'https://www.nhc.noaa.gov/CurrentStorms.json'
 // Más allá de esto no vale la pena bajar su trayectoria
@@ -37,7 +38,7 @@ export function parsearNhc(l: Lugar, json: unknown): Basico[] {
       const kt = Number(t.intensity ?? 0) || 0
       return {
         id: t.id ?? t.name ?? '?',
-        nombre: t.name ?? 'Sin nombre',
+        nombre: t.name ?? tr('Sin nombre', 'Unnamed'),
         clase: t.classification ?? '',
         vientoKmh: Math.round(kt * KT),
         categoria: categoria(t.classification ?? '', kt),
@@ -67,20 +68,21 @@ export function categoria(clase: string, kt: number): number {
   return 0
 }
 
-const CLASES: Record<string, string> = {
-  HU: 'Huracán',
-  TS: 'Tormenta tropical',
-  TD: 'Depresión tropical',
-  STS: 'Tormenta subtropical',
-  SS: 'Tormenta subtropical',
-  SD: 'Depresión subtropical',
-  PTC: 'Potencial ciclón tropical',
-  PC: 'Potencial ciclón tropical',
-  PT: 'Ciclón postropical',
+const CLASES: Record<string, [string, string]> = {
+  HU: ['Huracán', 'Hurricane'],
+  TS: ['Tormenta tropical', 'Tropical storm'],
+  TD: ['Depresión tropical', 'Tropical depression'],
+  STS: ['Tormenta subtropical', 'Subtropical storm'],
+  SS: ['Tormenta subtropical', 'Subtropical storm'],
+  SD: ['Depresión subtropical', 'Subtropical depression'],
+  PTC: ['Potencial ciclón tropical', 'Potential tropical cyclone'],
+  PC: ['Potencial ciclón tropical', 'Potential tropical cyclone'],
+  PT: ['Ciclón postropical', 'Post-tropical cyclone'],
 }
 
 export function claseTexto(c: { clase: string; categoria: number }): string {
-  const base = CLASES[c.clase] ?? 'Ciclón'
+  const par = CLASES[c.clase]
+  const base = par ? tr(par[0], par[1]) : tr('Ciclón', 'Cyclone')
   return c.categoria > 0 ? `${base} cat. ${c.categoria}` : base
 }
 
@@ -151,15 +153,17 @@ export const COLOR_NIVEL: Record<Nivel, string> = {
   lejos: '#94a3b8',
 }
 
-export const TEXTO_NIVEL: Record<Nivel, string> = {
-  alerta: 'ALERTA',
-  vigilancia: 'Vigilancia',
-  atento: 'Atento',
-  lejos: 'Lejos',
+const NIVELES: Record<Nivel, [string, string]> = {
+  alerta: ['ALERTA', 'WARNING'],
+  vigilancia: ['Vigilancia', 'Watch'],
+  atento: ['Atento', 'Heads up'],
+  lejos: ['Lejos', 'Far away'],
 }
+export const textoNivel = (n: Nivel): string => tr(NIVELES[n][0], NIVELES[n][1])
 
 const RUMBOS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO']
-export const rumbo16 = (g: number): string => RUMBOS[Math.round((((g % 360) + 360) % 360) / 22.5) % 16] ?? 'N'
+const RUMBOS_EN = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+export const rumbo16 = (g: number): string => (idioma() === 'en' ? RUMBOS_EN : RUMBOS)[Math.round((((g % 360) + 360) % 360) / 22.5) % 16] ?? 'N'
 
 // ¿Se acerca? El movimiento apunta a menos de 60° de la línea tormenta → lugar
 export function seAcerca(c: Ciclon): boolean {

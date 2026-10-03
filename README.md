@@ -1,5 +1,7 @@
 # clima-condor
 
+🌐 Español · [English](#english)
+
 Un mod para [Claude Code](https://claude.com/claude-code) que abre un panel con el cielo de tu ciudad: clima real, sol y luna en su posición real, marea, huracanes y relojes. Funciona en la terminal y en la pestaña Code de la app de escritorio.
 
 <p align="center">
@@ -69,19 +71,65 @@ Abre una sesión nueva de Claude Code y escribe `/clima`.
 | `/clima Madrid` | El clima de otra ciudad |
 | `/clima auto` | Vuelve a tu ubicación |
 | `/clima amanecer`, `/clima atardecer`, `/clima luna` | Timelapse de 40 segundos |
+| `/clima idioma en`, `/clima idioma es` | Cambia el idioma del panel (también con el botón 🌐) |
 | `/clima cerrar` | Cierra el panel |
 
 ## Opciones
 
-La segunda ciudad del reloj «Dos ciudades» se cambia en la configuración del plugin:
+En la configuración del plugin:
 
+- `idioma`: `es` (español, por defecto) o `en` (inglés). El botón 🌐 del panel y `/clima idioma` lo cambian al momento y lo recuerdan.
 - `segunda_ciudad`: el nombre que se muestra (por defecto, Santiago)
 - `segunda_zona`: su zona horaria IANA (por defecto, `America/Santiago`)
 
 ## Privacidad
 
-El mod consulta servicios públicos sin clave: [ipwho.is](https://ipwho.is) para ubicarte por tu IP, [Open-Meteo](https://open-meteo.com) para el clima y la marea, y el [NHC](https://www.nhc.noaa.gov) para los huracanes. Para el panel de consumo lee archivos locales de Codex (`~/.codex`), Grok Build (`~/.grok`) y Antigravity, solo si existen en tu equipo. Nada sale de tu equipo salvo esas consultas.
+El mod consulta servicios públicos sin clave: [ipwho.is](https://ipwho.is) (o [ip-api.com](https://ip-api.com) si falla) para ubicarte por tu IP, [Open-Meteo](https://open-meteo.com) para el clima y la marea, y el [NHC](https://www.nhc.noaa.gov) para los huracanes. Para el panel de consumo lee archivos locales de Codex (`~/.codex`), Grok Build (`~/.grok`) y Antigravity, solo si existen en tu equipo. Nada sale de tu equipo salvo esas consultas.
 
 ## Licencia
+
+MIT
+
+---
+
+## English
+
+A [Claude Code](https://claude.com/claude-code) mod that opens a panel with your city's sky: live weather, the real position of the sun and the moon, tides, hurricanes and clocks. It runs in the terminal and in the Code tab of the desktop app, in **English or Spanish**.
+
+<p align="center">
+  <img src="docs/panel-madrid-en.png" width="560" alt="The full /clima panel in English for Madrid: sky, current weather, moon, next hours, 7 days, hurricanes, clock and usage">
+</p>
+
+<p align="center"><sub>Real data for Madrid (Oct 3, 2026, 05:45). Usage percentages are sample values.</sub></p>
+
+### Install
+
+```bash
+claude plugin marketplace add condor090/clima-condor
+claude plugin install clima-condor@condor
+```
+
+Open a new Claude Code session, type `/clima language en` once, then `/clima`. The panel remembers your language. You can also set the `idioma` option to `en` in the plugin settings, or press 🌐 in the panel.
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `/clima` | Opens the panel for your location (detected from your IP) |
+| `/clima London` | Weather for another city |
+| `/clima auto` | Back to your location |
+| `/clima sunrise`, `/clima sunset`, `/clima moon` | 40-second timelapse |
+| `/clima language en`, `/clima language es` | Switches the panel language |
+| `/clima close` | Closes the panel |
+
+### What it shows
+
+Live sky that follows the real time and weather · current conditions · moon phase, rise and set · next hours and 7 days · tides near the coast · active hurricanes from the US National Hurricane Center on a radar centered on you · 8 analog and digital clock themes · how much of your Claude Code limits you have left and whether they will last.
+
+### Privacy
+
+The mod calls free public services with no key: ipwho.is (or ip-api.com as a fallback) for your location, Open-Meteo for weather and tides, and the NHC for hurricanes. For the usage section it reads local files from Codex, Grok Build and Antigravity only if they exist on your machine.
+
+### License
 
 MIT

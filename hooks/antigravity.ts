@@ -1,5 +1,6 @@
 // Cuota de Antigravity por familia de modelos, desde la copia que guarda su app de escritorio
 import type { Agente, Limite } from '../types'
+import { tr } from './idioma'
 
 // `root`: la carpeta del mod ($.plugin.root), esté donde esté instalado
 export const leerAntigravity = (root: string): string => `python3 "${root.replace(/"/g, '\\"')}/hooks/antigravity.py" 2>/dev/null`
@@ -45,6 +46,6 @@ export function parsearAntigravity(salida: string, ahora: number): Agente | null
     plan: s.plan ?? null,
     creditos: null,
     medido: s.guardado ? new Date(s.guardado * 1000).toISOString() : null,
-    nota: renovada ? 'ya renovado · abre la app para el dato real' : null,
+    nota: renovada ? tr('ya renovado · abre la app para el dato real', 'already renewed · open the app for the real figure') : null,
   }
 }

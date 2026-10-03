@@ -29,7 +29,10 @@ export type Fase = {
   emoji: string
 }
 
+import { idioma } from './idioma'
+
 const NOMBRES = ['Luna nueva', 'Luna creciente', 'Cuarto creciente', 'Gibosa creciente', 'Luna llena', 'Gibosa menguante', 'Cuarto menguante', 'Luna menguante']
+const NOMBRES_EN = ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent']
 const EMOJIS_NORTE = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘']
 // En el hemisferio sur la parte iluminada se ve del otro lado
 const EMOJIS_SUR = ['🌑', '🌘', '🌗', '🌖', '🌕', '🌔', '🌓', '🌒']
@@ -41,7 +44,7 @@ export function fase(ms: number, lat = 0): Fase {
     elongacion: e,
     iluminada: (1 - Math.cos(e * RAD)) / 2,
     creciente: e < 180,
-    nombre: NOMBRES[i] ?? 'Luna',
+    nombre: (idioma() === 'en' ? NOMBRES_EN : NOMBRES)[i] ?? 'Luna',
     emoji: (lat < 0 ? EMOJIS_SUR : EMOJIS_NORTE)[i] ?? '🌙',
   }
 }

@@ -2,6 +2,7 @@
 // Se describen como dibujos vectoriales animados (ver vector.ts): en el escritorio se mueven solos con SMIL,
 // en la terminal se rasterizan a píxeles cada segundo
 import type { Dibujo, Forma } from './vector'
+import { tr } from './idioma'
 
 export type Hora = { h: number; m: number; s: number }
 
@@ -532,3 +533,30 @@ const dosCiudades: Tema = {
 
 export const TEMAS: Tema[] = [fosforo, despertador, evolucion, hielo, solLuna, neon, binario, dosCiudades]
 export const DOS_CIUDADES = 'dos'
+
+// Nombres de temas y carátulas en inglés (los de arriba quedan en español)
+const NOMBRES_EN: Record<string, string> = {
+  'Fósforo': 'Phosphor',
+  Radar: 'Radar',
+  'LCD fósforo': 'Phosphor LCD',
+  Despertador: 'Alarm clock',
+  Campanas: 'Bells',
+  'LED rojo': 'Red LED',
+  'Centro Evolución': 'Centro Evolución',
+  'Oro y violeta': 'Gold and violet',
+  'Dorado CE': 'CE gold',
+  Hielo: 'Ice',
+  Minimal: 'Minimal',
+  'Trazo fino': 'Thin line',
+  'Sol y luna': 'Sun and moon',
+  '24 horas': '24 hours',
+  'Luz del día': 'Daylight',
+  'Neón': 'Neon',
+  Anillos: 'Rings',
+  Binario: 'Binary',
+  '60 luces': '60 lights',
+  BCD: 'BCD',
+  'Dos ciudades': 'Two cities',
+  'Aquí y otra ciudad': 'Here and another city',
+}
+export const nombreEn = (nombre: string): string => tr(nombre, NOMBRES_EN[nombre] ?? nombre)

@@ -3,15 +3,17 @@
 // Si lo gastado va por delante del tiempo, vas más rápido de lo que alcanza.
 import type { Limite } from '../types'
 import { DEFECTO, empaquetar } from './escena'
+import { idioma, tr } from './idioma'
 
 const MIN = 60_000
 const HORA = 60 * MIN
 const DIA = 24 * HORA
 const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+const DIAS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-const VENTANAS: Record<string, { nombre: string; largo: number }> = {
-  five_hour: { nombre: '5 horas', largo: 5 * HORA },
-  seven_day: { nombre: 'Semana', largo: 7 * DIA },
+const VENTANAS: Record<string, { nombre: () => string; largo: number }> = {
+  five_hour: { nombre: () => tr('5 horas', '5 hours'), largo: 5 * HORA },
+  seven_day: { nombre: () => tr('Semana', 'Week'), largo: 7 * DIA },
 }
 
 export type Ventana = {
@@ -26,7 +28,11 @@ export type Ventana = {
 
 export function ventanas(limites: Limite[], ahora: number): Ventana[] {
   // Un límite trae su propia ventana (Antigravity) o usa la conocida de Claude
-  const de = (l: Limite) => (l.largoMs ? { nombre: l.etiqueta ?? l.kind, largo: l.largoMs } : VENTANAS[l.kind])
+  const de = (l: Limite) => {
+    if (l.largoMs) return { nombre: l.etiqueta ?? l.kind, largo: l.largoMs }
+    const v = VENTANAS[l.kind]
+    return v ? { nombre: v.nombre(), largo: v.largo } : undefined
+  }
   return limites
     .filter(l => de(l))
     .sort((a, b) => (de(a)?.largo ?? 0) - (de(b)?.largo ?? 0))
@@ -78,7 +84,7 @@ const dosDigitos = (n: number) => String(n).padStart(2, '0')
 export function cuando(ms: number, ahora: number, offsetMin: number): string {
   const d = new Date(ms + offsetMin * MIN)
   const hhmm = `${dosDigitos(d.getUTCHours())}:${dosDigitos(d.getUTCMinutes())}`
-  return ms - ahora < 20 * HORA ? hhmm : `${DIAS[d.getUTCDay()]} ${hhmm}`
+  return ms - ahora < 20 * HORA ? hhmm : `${(idioma() === 'en' ? DIAS_EN : DIAS)[d.getUTCDay()]} ${hhmm}`
 }
 
 export function enCuanto(ms: number): string {
@@ -86,34 +92,35 @@ export function enCuanto(ms: number): string {
   if (min < 60) return `${min} min`
   const h = Math.floor(min / 60)
   if (h < 48) return min % 60 ? `${h} h ${min % 60} min` : `${h} h`
-  return `${Math.round(h / 24)} días`
+  return `${Math.round(h / 24)} ${tr('días', 'days')}`
 }
 
 export function textoRitmo(v: Ventana, ahora: number, offsetMin: number): { texto: string; color: string } {
-  if (!v.ritmo) return { texto: 'midiendo el ritmo…', color: '#9ca3af' }
-  if ('agota' in v.ritmo) return { texto: `⚠ a este ritmo se agota ${cuando(v.ritmo.agota, ahora, offsetMin)}`, color: '#ff5f5f' }
-  return { texto: `✓ a este ritmo alcanza · sobra ~${v.ritmo.sobra}%`, color: '#5fd75f' }
+  if (!v.ritmo) return { texto: tr('midiendo el ritmo…', 'measuring the pace…'), color: '#9ca3af' }
+  if ('agota' in v.ritmo) return { texto: `⚠ ${tr('a este ritmo se agota', 'at this pace it runs out')} ${cuando(v.ritmo.agota, ahora, offsetMin)}`, color: '#ff5f5f' }
+  return { texto: `✓ ${tr('a este ritmo alcanza · sobra', 'at this pace it lasts · left')} ~${v.ritmo.sobra}%`, color: '#5fd75f' }
 }
 
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const MESES_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 // Cuándo se midió: la hora si fue hoy, si no el día ("24 sep")
 export function medidoEl(ms: number, ahora: number, offsetMin: number): string {
   if (ahora - ms < 20 * HORA) return cuando(ms, ahora, offsetMin)
   const d = new Date(ms + offsetMin * MIN)
-  return `${d.getUTCDate()} ${MESES[d.getUTCMonth()]}`
+  return idioma() === 'en' ? `${MESES_EN[d.getUTCMonth()]} ${d.getUTCDate()}` : `${d.getUTCDate()} ${MESES[d.getUTCMonth()]}`
 }
 
 // Reinicio en corto: "21:50 · en 3 h 59 min"
 export function reinicioCorto(v: Ventana, ahora: number, offsetMin: number): string {
-  return v.reinicio ? `↻ ${cuando(v.reinicio, ahora, offsetMin)} · en ${enCuanto(v.reinicio - ahora)}` : ''
+  return v.reinicio ? `↻ ${cuando(v.reinicio, ahora, offsetMin)} · ${tr('en', 'in')} ${enCuanto(v.reinicio - ahora)}` : ''
 }
 
 // El ritmo solo cuando dice algo: advertencia o lo que sobra
 export function ritmoCorto(v: Ventana, ahora: number, offsetMin: number): { texto: string; color: string } | null {
   if (!v.ritmo) return null
-  if ('agota' in v.ritmo) return { texto: `⚠ se agota ${cuando(v.ritmo.agota, ahora, offsetMin)}`, color: '#ff5f5f' }
-  return { texto: `✓ sobra ~${v.ritmo.sobra}%`, color: '#5fd75f' }
+  if ('agota' in v.ritmo) return { texto: `⚠ ${tr('se agota', 'runs out')} ${cuando(v.ritmo.agota, ahora, offsetMin)}`, color: '#ff5f5f' }
+  return { texto: `✓ ${tr('sobra', 'left')} ~${v.ritmo.sobra}%`, color: '#5fd75f' }
 }
 
 // Varias ventanas idénticas (los modelos de Antigravity) se muestran como una sola

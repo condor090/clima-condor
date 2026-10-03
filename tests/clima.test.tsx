@@ -87,6 +87,42 @@ describe('clima', () => {
     await ui.unmount()
   })
 
+  test('el panel cambia de idioma con /clima idioma y con el botón 🌐', async ($, on) => {
+    const guardado = new Map<string, unknown>()
+    on('http.fetch', async (_$, e) => {
+      const text = e.url.includes('ipwho.is')
+        ? JSON.stringify({ success: true, city: 'Santiago', region: 'RM', latitude: -33.45, longitude: -70.67 })
+        : JSON.stringify(RESPUESTA)
+      return { value: { status: 200, ok: true, headers: {}, text } }
+    })
+    on('store.get', (_$, e) => ({ value: guardado.get(e.key) }))
+    on('store.set', (_$, e) => {
+      guardado.set(e.key, e.value)
+      return { value: undefined }
+    })
+    on('ui.open', () => ({ value: { isPlaced: true } }) as const)
+    on('ui.status', () => ({ value: undefined }))
+    on('ui.blit', () => ({ value: {} }))
+    mock.clock(on, { now: Date.parse('2026-10-02T17:15:00Z') })
+
+    const r = await $.command.run({ command: 'clima', args: 'idioma en' } as never)
+    expect(r.text).toContain('English')
+    expect(guardado.get('idioma')).toBe('en')
+    expect((await $.command.run({ command: 'clima', args: '' } as never)).text).toContain('clear')
+
+    const ui = await $.ui.mount({ plugin: 'clima-condor', surface: 'desktop', component: 'Pane', props: {} as never, requestId: 'clima' })
+    expect(await ui.find({ type: 'Text', text: /Next 7 days/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Feels like/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Today/ })).toBeDefined()
+    // El botón 🌐 vuelve al español
+    await ui.press({ key: 'idioma' })
+    expect(await ui.find({ type: 'Text', text: /Próximos 7 días/ })).toBeDefined()
+    expect(guardado.get('idioma')).toBe('es')
+    await ui.unmount()
+
+    expect((await $.command.run({ command: 'clima', args: 'idioma klingon' } as never)).text).toContain('es (español)')
+  })
+
   test('el panel dibuja el clima con la red simulada', async ($, on) => {
     on('http.fetch', async (_$, e) => {
       const url = e.url

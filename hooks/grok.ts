@@ -1,5 +1,6 @@
 // Cuota semanal de Grok Build: la calcula ~/.grok/statusline.py desde el registro de Grok
 import type { Agente, Limite } from '../types'
+import { tr } from './idioma'
 
 export const LEER_GROK =
   'cd "$HOME/.grok" 2>/dev/null && python3 -c "import json, statusline; print(json.dumps(statusline.load_quota(\'clima-condor\')))" 2>/dev/null'
@@ -18,12 +19,12 @@ export function parsearGrok(salida: string, ahora: number): Agente | null {
   if (!q || typeof q.used !== 'number') return null
   let fin = q.period_end ? Date.parse(q.period_end) : NaN
   let usado = q.used
-  let nota = q.estimated ? 'estimado' : ''
+  let nota = q.estimated ? tr('estimado', 'estimated') : ''
   // El periodo ya cerró y Grok no ha vuelto a medir: el nuevo periodo empieza sin uso
   if (Number.isFinite(fin) && fin <= ahora) {
     while (fin <= ahora) fin += SEMANA
     usado = 0
-    nota = 'sin uso este periodo'
+    nota = tr('sin uso este periodo', 'no use this period')
   }
   const limites: Limite[] = [{ kind: 'seven_day', percentUsed: usado, ...(Number.isFinite(fin) ? { resetsAt: new Date(fin).toISOString() } : {}) }]
   return { limites, plan: q.tier ?? null, creditos: null, medido: q.fetched_at ?? null, nota: nota || null }
