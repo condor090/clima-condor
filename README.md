@@ -2,6 +2,16 @@
 
 Un mod para [Claude Code](https://claude.com/claude-code) que abre un panel con el cielo de tu ciudad: clima real, sol y luna en su posición real, marea, huracanes y relojes. Funciona en la terminal y en la pestaña Code de la app de escritorio.
 
+<p align="center">
+  <img src="docs/panel-madrid.png" width="560" alt="El panel /clima completo con Madrid: cielo, clima actual, luna, próximas horas, 7 días, huracanes, reloj y consumo">
+</p>
+
+<p align="center"><sub>El panel con datos reales de Madrid (3 oct 2026, 05:45). Los porcentajes de consumo son de ejemplo.</sub></p>
+
+## Qué muestra
+
+**Cielo vivo.** Amanecer, día, atardecer y noche según la hora real; nubes, lluvia, nieve y tormentas según el clima real. El sol y la luna salen y se ponen detrás del paisaje (desierto, cordillera o colinas, según tu zona) y la luna muestra su fase del día. Con los botones ▶ ves el amanecer, el atardecer o la salida de la luna en 40 segundos.
+
 <table>
   <tr>
     <td><img src="docs/amanecer.svg" width="400" alt="Amanecer en los Andes: el sol asoma detrás de la sierra y la luna menguante se apaga"></td>
@@ -12,6 +22,18 @@ Un mod para [Claude Code](https://claude.com/claude-code) que abre un panel con 
     <td><img src="docs/tormenta.svg" width="400" alt="Tarde de tormenta con lluvia y rayos"></td>
   </tr>
 </table>
+
+**Clima ahora.** Temperatura, sensación térmica, humedad, viento y ráfagas, índice UV, salida y puesta del sol.
+
+**Luna.** Fase, porcentaje iluminado, próxima luna llena o nueva, altura sobre el horizonte y cuándo sale y se pone.
+
+**Próximas horas y 7 días.** Temperatura y probabilidad de lluvia cada dos horas; mínima, máxima y lluvia de la semana con barras de rango.
+
+**Marea.** En ciudades con costa cerca: la curva de las próximas 24 horas, pleamar y bajamar.
+
+**Huracanes.** Ciclones activos del Centro Nacional de Huracanes de EE. UU. (NHC) en un radar centrado en ti, con categoría, viento, distancia, rumbo y si se acercan o se alejan. Si uno se acerca, aparece un aviso.
+
+**Relojes.** Analógicos o digitales, con 8 temas; «Dos ciudades» muestra tu hora y la de otra ciudad.
 
 <p>
   <img src="docs/reloj-1.svg" width="88" alt="Reloj Fósforo">
@@ -24,17 +46,11 @@ Un mod para [Claude Code](https://claude.com/claude-code) que abre un panel con 
   <img src="docs/reloj-8.svg" width="88" alt="Reloj Dos ciudades">
 </p>
 
-Las imágenes salen del mismo código que dibuja el panel (`docs/generar.ts`) y se mueven igual que en la app de escritorio: nubes, lluvia, estrellas, rayos y manecillas.
+**Combustible.** Cuánto te queda de tus límites de Claude Code (5 horas y semana) y a qué ritmo los gastas, con aviso si se van a agotar antes de renovarse. Si tienes Codex, Grok Build o Antigravity instalados, también los suyos.
 
-## Qué muestra
+**Barra de estado.** El clima en una línea siempre visible, aunque el panel esté cerrado.
 
-- **Cielo vivo**: amanecer, día, atardecer y noche según la hora real; nubes, lluvia, nieve y tormentas según el clima real.
-- **Sol y luna reales**: salen y se ponen detrás del paisaje, y la luna muestra su fase del día.
-- **Timelapse**: el amanecer, el atardecer o la salida de la luna en 40 segundos.
-- **Marea** de la costa más cercana (curva de 24 horas).
-- **Huracanes** activos del Centro Nacional de Huracanes (NHC), con radar, trayectoria y aviso si uno se acerca.
-- **Relojes** analógicos o digitales con 8 temas, incluido uno de dos ciudades.
-- **Combustible**: cuánto llevas usado de tus límites de Claude Code y, si los tienes instalados, de Codex, Grok Build y Antigravity.
+Las imágenes del cielo y los relojes salen del mismo código que dibuja el panel (`docs/generar.ts`) y se mueven igual que en la app de escritorio.
 
 ## Instalar
 
