@@ -2,9 +2,11 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import type { Agente, Ciclon, Clima, Limite, Lugar, ModoReloj, Sim } from '../types'
-import { LEER_CODEX, parsearCodex } from './codex'
-import { LEER_GROK, parsearGrok } from './grok'
-import { leerAntigravity, parsearAntigravity } from './antigravity'
+import { LECTURA_CODEX, VIGENCIA_CODEX, abrirCarpeta, filtroCodex, parsearCodex, ultimaConLimites } from './codex'
+import { CODIGO_GROK, parsearGrok } from './grok'
+import { parsearAntigravity, rutasAntigravity } from './antigravity'
+import { esWindows, pythons, unir } from './sistema'
+import type { Sistema } from './sistema'
 import {
   SANTIAGO,
   barra,
@@ -77,16 +79,84 @@ const idiomaA = atom({ plugin: 'clima-condor', key: 'idioma' } as const, 'es')
 const MAREA_MS = 3 * 60 * 60 * 1000
 const HURACANES_MS = 30 * 60 * 1000
 
-async function leerAgentes($: EngineInterface): Promise<void> {
-  const leer = async (sh: string): Promise<string> => {
+// --- Los otros agentes, en macOS, Linux y Windows
+
+async function sistemaDe($: EngineInterface): Promise<Sistema | null> {
+  const windows = esWindows($.plugin.root)
+  const home = windows ? ((await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME'))) : await $.env.get('HOME')
+  if (!home) return null
+  return { windows, home: home.replace(/[\\/]+$/, ''), appdata: windows ? ((await $.env.get('APPDATA')) ?? null) : null }
+}
+
+async function python($: EngineInterface, s: Sistema, args: readonly string[], cwd?: string): Promise<string> {
+  for (const py of pythons(s)) {
     try {
-      return (await $.process.run(['sh', '-c', sh], { timeoutMs: 15_000 })).stdout
+      const r = await $.process.run([...py, ...args], { timeoutMs: 15_000, ...(cwd ? { cwd } : {}) })
+      if (r.exitCode === 0) return r.stdout
     } catch {
-      return ''
+      // no está instalado: el siguiente
     }
   }
-  const [codex, grok, ag] = await Promise.all([leer(LEER_CODEX), leer(LEER_GROK), leer(leerAntigravity($.plugin.root))])
+  return ''
+}
+
+type ArchivoCodex = { ruta: string; size: number; mtimeMs: number }
+
+// El .jsonl más reciente de la última semana bajo ~/.codex/sessions/AAAA/MM/DD
+async function sesionCodex($: EngineInterface, s: Sistema, dir: string, fecha: string, ahora: number): Promise<ArchivoCodex | null> {
+  let mejor: ArchivoCodex | null = null
+  for (const e of await $.fs.list(dir).catch(() => [])) {
+    let f: ArchivoCodex | null = null
+    if (e.kind === 'file' && e.name.endsWith('.jsonl') && e.mtimeMs >= ahora - VIGENCIA_CODEX) {
+      f = { ruta: unir(s, dir, e.name), size: e.size, mtimeMs: e.mtimeMs }
+    } else if (e.kind === 'dir') {
+      const sub = abrirCarpeta(fecha, e.name, ahora)
+      if (sub) f = await sesionCodex($, s, unir(s, dir, e.name), sub, ahora)
+    }
+    if (f && (!mejor || f.mtimeMs > mejor.mtimeMs)) mejor = f
+  }
+  return mejor
+}
+
+// La última línea leída, para no releer una sesión que no cambió
+let codexLeido: { ruta: string; mtimeMs: number; linea: string } | null = null
+
+async function leerCodex($: EngineInterface, s: Sistema, ahora: number): Promise<string> {
+  const raiz = unir(s, s.home, '.codex', 'sessions')
+  if (!(await $.fs.exists(raiz))) return ''
+  const f = await sesionCodex($, s, raiz, '', ahora)
+  if (!f) return ''
+  if (codexLeido?.ruta === f.ruta && codexLeido.mtimeMs === f.mtimeMs) return codexLeido.linea
+  const linea =
+    f.size <= LECTURA_CODEX
+      ? ultimaConLimites(await $.fs.read(f.ruta))
+      : (await $.process.run(filtroCodex(s), { timeoutMs: 20_000, env: { CLIMA_CODEX: f.ruta } })).stdout
+  codexLeido = { ruta: f.ruta, mtimeMs: f.mtimeMs, linea }
+  return linea
+}
+
+async function leerGrok($: EngineInterface, s: Sistema): Promise<string> {
+  const dir = unir(s, s.home, '.grok')
+  if (!(await $.fs.exists(unir(s, dir, 'statusline.py')))) return ''
+  return python($, s, ['-c', CODIGO_GROK], dir)
+}
+
+async function leerAntigravity($: EngineInterface, s: Sistema): Promise<string> {
+  for (const db of rutasAntigravity(s)) {
+    if (await $.fs.exists(db)) return python($, s, [unir(s, $.plugin.root, 'hooks', 'antigravity.py'), db])
+  }
+  return ''
+}
+
+async function leerAgentes($: EngineInterface): Promise<void> {
+  const s = await sistemaDe($)
+  if (!s) return
   const ahora = await $.clock.now()
+  const [codex, grok, ag] = await Promise.all([
+    leerCodex($, s, ahora).catch(() => ''),
+    leerGrok($, s).catch(() => ''),
+    leerAntigravity($, s).catch(() => ''),
+  ])
   // Sin el agente instalado o sin datos, su sección queda oculta
   const c: Agente | null = parsearCodex(codex)
   const g: Agente | null = parsearGrok(grok, ahora)

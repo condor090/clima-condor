@@ -1,11 +1,35 @@
 // Límites de uso de Codex: se leen del último evento token_count de sus sesiones en ~/.codex
 import type { Agente, Limite } from '../types'
 import { tr } from './idioma'
+import type { Sistema } from './sistema'
 
-// Último registro con rate_limits del archivo de sesión más reciente (los de la última semana)
-export const LEER_CODEX =
-  'f=$(find "$HOME/.codex/sessions" -name "*.jsonl" -mtime -8 -exec stat -f "%m %N" {} + 2>/dev/null | sort -rn | head -1 | cut -d" " -f2-); ' +
-  '[ -n "$f" ] && tail -c 20000000 "$f" | grep "\\"rate_limits\\"" | tail -1'
+const DIA = 24 * 3600 * 1000
+// Solo cuentan las sesiones escritas en la última semana
+export const VIGENCIA_CODEX = 8 * DIA
+// $.fs.read lee hasta 4 MiB; un archivo mayor lo filtra el sistema
+export const LECTURA_CODEX = 4 * 1024 * 1024
+
+// Las carpetas AAAA/MM/DD de ~/.codex/sessions con más de 40 días ni se abren
+export function abrirCarpeta(fecha: string, nombre: string, ahora: number): string | null {
+  if (!/^\d+$/.test(nombre) || fecha.split('-').length >= 3) return null
+  const sub = fecha ? `${fecha}-${nombre}` : nombre
+  const desde = new Date(ahora - 40 * DIA).toISOString().slice(0, sub.length)
+  return sub >= desde ? sub : null
+}
+
+export function ultimaConLimites(texto: string): string {
+  const lineas = texto.split('\n')
+  for (let i = lineas.length - 1; i >= 0; i--) if (lineas[i]!.includes('"rate_limits"')) return lineas[i]!
+  return ''
+}
+
+// Para un archivo grande: la última línea con rate_limits, filtrada por el sistema (la ruta va en CLIMA_CODEX).
+// Windows quita las comillas dobles de la línea de comandos: en PowerShell van simples y [char]34 es "
+export const filtroCodex = (s: Sistema): string[] =>
+  s.windows
+    ? ['powershell', '-NoProfile', '-NonInteractive', '-Command',
+        "(Select-String -LiteralPath $env:CLIMA_CODEX -SimpleMatch -Pattern ([char]34 + 'rate_limits' + [char]34) | Select-Object -Last 1).Line"]
+    : ['sh', '-c', 'tail -c 20000000 "$CLIMA_CODEX" | grep "\\"rate_limits\\"" | tail -1']
 
 type Ventana = { used_percent?: number; window_minutes?: number; resets_at?: number }
 

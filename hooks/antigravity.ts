@@ -1,9 +1,13 @@
 // Cuota de Antigravity por familia de modelos, desde la copia que guarda su app de escritorio
 import type { Agente, Limite } from '../types'
 import { tr } from './idioma'
+import { unir } from './sistema'
+import type { Sistema } from './sistema'
 
-// `root`: la carpeta del mod ($.plugin.root), esté donde esté instalado
-export const leerAntigravity = (root: string): string => `python3 "${root.replace(/"/g, '\\"')}/hooks/antigravity.py" 2>/dev/null`
+// Dónde puede estar la base de la app en cada sistema (es un VS Code): macOS, Linux o %APPDATA% en Windows
+export const rutasAntigravity = (s: Sistema): string[] =>
+  (s.windows ? (s.appdata ? [s.appdata] : []) : [unir(s, s.home, 'Library', 'Application Support'), unir(s, s.home, '.config')])
+    .map(base => unir(s, base, 'Antigravity', 'User', 'globalStorage', 'state.vscdb'))
 
 // En el plan Pro la cuota se renueva cada 5 horas
 const VENTANA = 5 * 3600 * 1000

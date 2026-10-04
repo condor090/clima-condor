@@ -2,8 +2,8 @@
 import type { Agente, Limite } from '../types'
 import { tr } from './idioma'
 
-export const LEER_GROK =
-  'cd "$HOME/.grok" 2>/dev/null && python3 -c "import json, statusline; print(json.dumps(statusline.load_quota(\'clima-condor\')))" 2>/dev/null'
+// Se corre con Python dentro de ~/.grok, donde está statusline.py
+export const CODIGO_GROK = "import json, statusline; print(json.dumps(statusline.load_quota('clima-condor')))"
 
 const SEMANA = 7 * 24 * 3600 * 1000
 

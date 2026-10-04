@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Cuota de Antigravity: la última copia que guardó la app de escritorio (userStatus, protobuf en base64)
-import base64, json, os, sqlite3, struct, sys
+import base64, json, os, pathlib, sqlite3, struct, sys
 
-DB = os.path.expanduser('~/Library/Application Support/Antigravity/User/globalStorage/state.vscdb')
+# La ruta llega del mod según el sistema; sin ella, la de macOS
+DB = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/Library/Application Support/Antigravity/User/globalStorage/state.vscdb')
 
 
 def varint(b, i):
@@ -44,7 +45,8 @@ def primero(cs, f):
 
 
 def leer():
-    con = sqlite3.connect(f'file:{DB}?mode=ro', uri=True)
+    # as_uri arma file:///C:/… en Windows y escapa los espacios de Application Support
+    con = sqlite3.connect(pathlib.Path(DB).resolve().as_uri() + '?mode=ro', uri=True)
     fila = con.execute("select value from ItemTable where key='antigravityUnifiedStateSync.userStatus'").fetchone()
     if not fila:
         return None

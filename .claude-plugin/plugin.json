@@ -1,6 +1,6 @@
 {
   "name": "clima-condor",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Clima, sol y luna reales, marea, huracanes y relojes en un panel de Claude Code: /clima",
   "author": {
     "name": "Daniel Cheuqueman"

@@ -1,9 +1,65 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { parsearCodex } from '../hooks/codex'
+import { abrirCarpeta, filtroCodex, parsearCodex, ultimaConLimites } from '../hooks/codex'
 import { parsearGrok } from '../hooks/grok'
-import { parsearAntigravity } from '../hooks/antigravity'
+import { parsearAntigravity, rutasAntigravity } from '../hooks/antigravity'
 import { agrupar, medidoEl, ventanas } from '../hooks/consumo'
+import { esWindows, pythons, unir } from '../hooks/sistema'
+import type { Sistema } from '../hooks/sistema'
+
+const MAC: Sistema = { windows: false, home: '/Users/ana', appdata: null }
+const WIN: Sistema = { windows: true, home: 'C:\\Users\\ana', appdata: 'C:\\Users\\ana\\AppData\\Roaming' }
+
+describe('sistema', () => {
+  test('reconoce Windows por la unidad de la carpeta del mod', () => {
+    expect(esWindows('C:\\Users\\ana\\.claude\\plugins\\clima-condor')).toBe(true)
+    expect(esWindows('/Users/ana/.claude/plugins/clima-condor')).toBe(false)
+  })
+
+  test('une rutas con el separador de cada sistema', () => {
+    expect(unir(WIN, WIN.home, '.codex', 'sessions')).toBe('C:\\Users\\ana\\.codex\\sessions')
+    expect(unir(MAC, MAC.home, '.codex', 'sessions')).toBe('/Users/ana/.codex/sessions')
+  })
+
+  test('en Windows prueba py antes que el python de la Store', () => {
+    expect(pythons(WIN)[0]).toEqual(['py', '-3'])
+    expect(pythons(MAC)).toEqual([['python3']])
+  })
+
+  test('busca Antigravity en %APPDATA%, Application Support y .config', () => {
+    expect(rutasAntigravity(WIN)).toEqual(['C:\\Users\\ana\\AppData\\Roaming\\Antigravity\\User\\globalStorage\\state.vscdb'])
+    expect(rutasAntigravity(MAC)).toEqual([
+      '/Users/ana/Library/Application Support/Antigravity/User/globalStorage/state.vscdb',
+      '/Users/ana/.config/Antigravity/User/globalStorage/state.vscdb',
+    ])
+  })
+})
+
+describe('sesiones de codex', () => {
+  const ahora = Date.parse('2026-10-03T12:00:00Z')
+
+  test('abre las carpetas AAAA/MM/DD recientes y salta las viejas', () => {
+    expect(abrirCarpeta('', '2026', ahora)).toBe('2026')
+    expect(abrirCarpeta('2026', '09', ahora)).toBe('2026-09')
+    expect(abrirCarpeta('2026-09', '30', ahora)).toBe('2026-09-30')
+    expect(abrirCarpeta('2026', '07', ahora)).toBeNull()
+    expect(abrirCarpeta('', '2025', ahora)).toBeNull()
+    expect(abrirCarpeta('2026-09-30', '01', ahora)).toBeNull()
+    expect(abrirCarpeta('2026', 'archivadas', ahora)).toBeNull()
+  })
+
+  test('toma la última línea con rate_limits', () => {
+    const texto = ['{"a":1,"rate_limits":1}', '{"b":2,"rate_limits":2}', '{"c":3}', ''].join('\n')
+    expect(ultimaConLimites(texto)).toBe('{"b":2,"rate_limits":2}')
+    expect(ultimaConLimites('{"c":3}')).toBe('')
+  })
+
+  test('en Windows el filtro no lleva comillas dobles, que la línea de comandos quita', () => {
+    expect(filtroCodex(WIN)[0]).toBe('powershell')
+    expect(filtroCodex(WIN).at(-1)).not.toContain('"')
+    expect(filtroCodex(MAC)[0]).toBe('sh')
+  })
+})
 
 describe('codex', () => {
   test('lee la ventana semanal, el plan y los créditos', () => {
